@@ -1,11 +1,12 @@
 #!/bin/bash
-# python3 score_analysis.py $1
-# python3 attentions.py $1
 
 if [ -z "$1" ]; then
     echo "Please provide a directory name."
     exit 1
 fi
+
+python3 score_analysis.py $1
+python3 attentions.py $1
 
 # List all directories in the specified directory
 logdirs=($(ls "logs/$1"))
