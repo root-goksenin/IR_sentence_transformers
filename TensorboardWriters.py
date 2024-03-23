@@ -2,11 +2,56 @@ import sys
 sys.path.append("../master_thesis_ai")
 from gpl_improved.utils import load_sbert
 from beir.datasets.data_loader import GenericDataLoader
-from utils import beir_path, concat_title_and_body, SentenceTransformerWrapper
+from utils import beir_path, concat_title_and_body
+from SentenceTransformerWrapper import SentenceTransformerWrapper
 import os 
 import tensorflow as tf 
 from tensorboard.plugins import projector
 import numpy as np
+from bertviz import head_view, model_view
+
+
+
+class TensorBoardAttentionWriter:
+    
+    def __init__(self, data_name, model_before, model_after, device):
+        self.data_name = data_name
+        self.corpus, self.queries, self.qrels = GenericDataLoader(beir_path.format(data_name)).load("test")
+        model_before = load_sbert(model_before)
+        model_after = load_sbert(model_after)
+        self.wrapped_before = SentenceTransformerWrapper(model_before, device)
+        self.wrapped_after = SentenceTransformerWrapper(model_after, device)
+         
+    def _write_html(self, path, html):
+        os.makedirs(os.path.split(path)[0], exist_ok=True)
+        with open(path, 'w') as file:
+            file.write(html)
+
+
+    def write(self, text, id, types = 'head'):
+        if types == "head":
+            self.write_head(text, id)
+        else:
+            self.write_model(text, id)
+            
+    def write_head(self, text, id):        
+        attention,tokens = self.wrapped_before.return_attention(text)
+        html_head_view = head_view(attention, tokens, html_action='return',include_layers = [5])
+        self._write_html(f"attentions/{self.data_name}/before/head_view_{id}.html" , html_head_view.data)
+       
+        attention,tokens = self.wrapped_after.return_attention(text)
+        html_head_view = head_view(attention, tokens, html_action='return', include_layers = [5])
+        self._write_html(f"attentions/{self.data_name}/after/head_view_{id}.html" , html_head_view.data)
+
+    def write_model(self, text, id):        
+        attention,tokens = self.wrapped_before.return_attention(text)
+        html_head_view = model_view(attention, tokens, html_action='return', include_layers = [5])
+        self._write_html(f"attentions/{self.data_name}/before/model_view_{id}.html" , html_head_view.data)
+       
+        attention,tokens = self.wrapped_after.return_attention(text)
+        html_head_view = model_view(attention, tokens, html_action='return', include_layers = [5])
+        self._write_html(f"attentions/{self.data_name}/after/model_view_{id}.html" , html_head_view.data)
+
 
 class TensorBoardProjectorWriter:
     def __init__(self, data_name, model_before, model_after, device):

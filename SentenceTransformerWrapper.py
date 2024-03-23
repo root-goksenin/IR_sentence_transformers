@@ -3,14 +3,19 @@ from beir.retrieval.search.dense import DenseRetrievalExactSearch
 from sentence_transformers.util import dot_score
 from beir.retrieval import models
 
+
+
+
 class SentenceTransformerWrapper:
     def __init__(self, model, device):
         self.model = model 
+        self.device = device
         # DistilBertModel from huggingface, put it to gpu
         self.bert_model = model._first_module().auto_model
         self.bert_model.to(device)
         self.bert_model.eval()
         self.bert_model.zero_grad()
+        self.pooler =  model._last_module()
         self.tokenizer = model._first_module().tokenizer 
         # This is a wrapper function that tokenizer inputs.
         self.bert_tokenizer = model._first_module().tokenize
@@ -26,9 +31,16 @@ class SentenceTransformerWrapper:
       return retriever
                 
     
+    
+    def return_text_and_base_features(self, text):
+        q_encoded = self.bert_tokenizer(text)
+        q_fake = [self.cls_token_id] + [self.ref_token_id] * (q_encoded['attention_mask'].shape[0] - 2) + [self.sep_token_id]
+        return q_encoded, q_fake
+
     def _produce_embedding(self, input_text):
         input_texts = [input_text]
         return self.model.encode(input_texts)[0]
+
 
     def calculate_sim(self, query, doc):
         return dot_score(self._produce_embedding(query),self._produce_embedding(doc))
@@ -44,4 +56,10 @@ class SentenceTransformerWrapper:
             if did not in qrels[qid]: 
                 hard_negatives.append(did)
         return hard_negatives
-        
+    
+    def return_attention(self, text):
+        inputs = self.tokenizer.encode(text, return_tensors='pt').to(self.device)
+        outputs = self.bert_model(inputs, output_attentions = True)
+        attention = outputs[-1]  # Output includes attention weights when output_attentions=True
+        tokens = self.tokenizer.convert_ids_to_tokens(inputs[0]) 
+        return attention,tokens
