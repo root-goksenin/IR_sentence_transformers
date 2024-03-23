@@ -2,8 +2,7 @@
 from beir.retrieval.search.dense import DenseRetrievalExactSearch
 from sentence_transformers.util import dot_score
 from beir.retrieval import models
-
-
+import torch
 
 
 class SentenceTransformerWrapper:
@@ -34,9 +33,13 @@ class SentenceTransformerWrapper:
     
     def return_text_and_base_features(self, text):
         q_encoded = self.bert_tokenizer(text)
-        q_fake = [self.cls_token_id] + [self.ref_token_id] * (q_encoded['attention_mask'].shape[0] - 2) + [self.sep_token_id]
-        return q_encoded, q_fake
+        q_fake = [self.cls_token_id] + [self.ref_token_id] * (q_encoded['attention_mask'].shape[1] - 2) + [self.sep_token_id]
+        fake = {"input_ids": torch.tensor([q_fake]), "attention_mask" : torch.clone(q_encoded['attention_mask'])}
+        return q_encoded, fake
 
+    def decode(self, input_ids):
+        print(input_ids)
+        return self.tokenizer.decode(token_ids = input_ids[0])
     def _produce_embedding(self, input_text):
         input_texts = [input_text]
         return self.model.encode(input_texts)[0]
