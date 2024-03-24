@@ -7,6 +7,7 @@ fi
 
 python3 score_analysis.py $1
 python3 attentions.py $1
+python3 integrated_gradients.py $1
 
 # List all directories in the specified directory
 logdirs=($(ls "logs/$1"))
