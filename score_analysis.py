@@ -21,7 +21,8 @@ def find_difference(before, after):
 @click.command()
 @click.argument("data_name")
 def main(data_name):
-    if not os.path.exists(f"differences/{data_name}.json", "w"):
+    print(data_name)
+    if not os.path.exists(f"differences/{data_name}.json"):
         zero_shot_beir_data = f"../master_thesis_ai/zero_shot_results/{data_name}/GPL/msmarco-distilbert-margin-mse/results_query_level.json"
         domain_adapted_beir_data = f"../master_thesis_ai/zero_shot_results/{data_name}/GPL/{data_name}-msmarco-distilbert-gpl/results_query_level.json"
 
@@ -31,3 +32,7 @@ def main(data_name):
                 
         with open(f"differences/{data_name}.json", "w") as file:
             json.dump(dict([diff[0], diff[-1]]), file)
+
+
+if __name__ == "__main__":
+    main()

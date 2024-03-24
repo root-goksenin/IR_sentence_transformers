@@ -28,18 +28,19 @@ class SentenceTransformerWrapper:
       retriever.q_model = self.model
       retriever.doc_model = self.model
       return retriever
-                
-    
     
     def return_text_and_base_features(self, text):
         q_encoded = self.bert_tokenizer(text)
         q_fake = [self.cls_token_id] + [self.ref_token_id] * (q_encoded['attention_mask'].shape[1] - 2) + [self.sep_token_id]
-        fake = {"input_ids": torch.tensor([q_fake]), "attention_mask" : torch.clone(q_encoded['attention_mask'])}
-        return q_encoded, fake
+        fake = {"input_ids": torch.tensor([q_fake], device = self.device), "attention_mask" : torch.clone(q_encoded['attention_mask']).to(self.device)}
+        q_encoded['input_ids'] = q_encoded['input_ids'].to(self.device)
+        q_encoded['attention_mask'] = q_encoded['attention_mask'].to(self.device)
+        return q_encoded, fake, self.tokenizer.convert_ids_to_tokens(q_encoded['input_ids'][0])
 
     def decode(self, input_ids):
         print(input_ids)
         return self.tokenizer.decode(token_ids = input_ids[0])
+
     def _produce_embedding(self, input_text):
         input_texts = [input_text]
         return self.model.encode(input_texts)[0]
