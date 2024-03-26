@@ -70,7 +70,23 @@ def find_ranks(search_set, list):
 # TODO!
 # Make it so that documents are already indexed, and multiple queries can be used
 # with indexed documents. Because, we know that documents wont change.
-
+def return_documents_pre_computed(model, corpus, queries, qrels, k = 10):
+    return_dict = model.searcher.search( 
+               corpus,
+               queries,
+               top_k = k, 
+               score_function = "dot",
+               return_sorted = True)
+    datasets = {}
+    for qid in qrels:
+        ranked_documents = list(dict(sorted(return_dict[qid].items(), key=lambda item: item[1], reverse = True)).keys())
+        dataset = pd.DataFrame(columns=['qid','did', 'rank', 'relevant'])
+        for i in range(len(ranked_documents)):
+            dataset.loc[i] = [qid] + [ranked_documents[i]] + [i] + [ranked_documents[i] in qrels[qid].keys()]
+        dataset['cross_encoder_score'] = predict_dataset_relevance(dataset, queries, corpus)
+        datasets[qid] = dataset
+    return datasets
+        
 def return_documents(model,corpus, queries, qrels, qid):
     
     relevant_docs =  set(qrels[qid].keys())
@@ -78,9 +94,13 @@ def return_documents(model,corpus, queries, qrels, qid):
     dataset = pd.DataFrame(columns=['qid','did', 'rank', 'relevant'])
     for i in range(len(before_documents)):
         dataset.loc[i] = [qid] + [before_documents[i]] + [i] + [before_documents[i] in relevant_docs]
-    
     dataset['cross_encoder_score'] = predict_dataset_relevance(dataset, queries, corpus)
     return dataset
+
+
+def write_to_disk(datasets, save_path):
+    for qid, dataset in datasets.items():
+        dataset.to_pickle(save_path + f"{qid}.pkl")        
 
 
 @click.command()
@@ -88,7 +108,6 @@ def return_documents(model,corpus, queries, qrels, qid):
 def main(data_name):
 
     os.makedirs(f"differences/{data_name}", exist_ok = True)
-    diff = load_json(f"differences/{data_name}.json")
     base = "GPL/msmarco-distilbert-margin-mse"  
     adapted = f"GPL/{data_name}-msmarco-distilbert-gpl" 
     corpus, queries, qrels = GenericDataLoader(beir_path.format(data_name)).load("test")
@@ -97,13 +116,19 @@ def main(data_name):
     after_model = load_sbert(adapted)
     after_model = SentenceTransformerWrapper(after_model, device)
             
-    for qid in diff.keys():
-        before = return_documents(before_model,
-                        corpus, queries, qrels, qid)
-        before.to_pickle(f"differences/{data_name}/before_{qid}.pkl")
-        after = return_documents(after_model,
-                        corpus, queries, qrels, qid)
-        after.to_pickle(f"differences/{data_name}/after_{qid}.pkl")        
+    # for qid in diff.keys():
+    #     before = return_documents(before_model,
+    #                     corpus, queries, qrels, qid)
+    #     before.to_pickle(f"differences/{data_name}/before_{qid}.pkl")
+    #     after = return_documents(after_model,
+    #                     corpus, queries, qrels, qid)
+    #     after.to_pickle(f"differences/{data_name}/after_{qid}.pkl")        
+    
+    before_datasets = return_documents_pre_computed(before_model, corpus, queries, qrels)
+    after_datasets = return_documents_pre_computed(after_model, corpus, queries, qrels)
+    
+    write_to_disk(before_datasets, save_path = f"differences/{data_name}/before_" )
+    write_to_disk(after_datasets, save_path = f"differences/{data_name}/after_")
     
         
 if __name__ == "__main__":
