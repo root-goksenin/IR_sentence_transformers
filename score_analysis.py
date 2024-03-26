@@ -29,9 +29,12 @@ def main(data_name):
 
         before, after = load_json(zero_shot_beir_data), load_json(domain_adapted_beir_data)
         diff = find_difference(before, after)
-                
+        
+
         with open(f"differences/{data_name}.json", "w") as file:
             json.dump(dict([diff[0], diff[-1]]), file)
+        
+        
 
 
 if __name__ == "__main__":

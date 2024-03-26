@@ -38,7 +38,6 @@ class SentenceTransformerWrapper:
         return q_encoded, fake, self.tokenizer.convert_ids_to_tokens(q_encoded['input_ids'][0])
 
     def decode(self, input_ids):
-        print(input_ids)
         return self.tokenizer.decode(token_ids = input_ids[0])
 
     def _produce_embedding(self, input_text):
@@ -49,17 +48,24 @@ class SentenceTransformerWrapper:
     def calculate_sim(self, query, doc):
         return dot_score(self._produce_embedding(query),self._produce_embedding(doc))
     
-    def return_hard_negatives(self, qid, query, corpus, qrels):
-        hard_negatives = []
+    def return_top_k(self, qid, queries, corpus, qrels, top_k = 1000):
+        dummy_query = {qid : queries[qid], "AABSEHFFDWD": queries[qid]}
+        returned = self.searcher.search(corpus, dummy_query,
+               top_k = top_k + len(qrels[qid]), 
+               score_function = "dot")
+
+        return list(dict(sorted(returned[qid].items(), key=lambda item: item[1], reverse = True)).keys())
+        
+    def return_hard_negatives(self, qid, query, corpus, qrels, top_k = 1000):
         dummy_query = {qid : query, "AABSEHFFDWD": query}
         returned = self.searcher.search(corpus, dummy_query,
-               top_k = 1000 + len(qrels[qid]), 
+               top_k = top_k + len(qrels[qid]), 
                score_function = "dot",
                return_sorted = True)
-        for did in returned[qid]:
-            if did not in qrels[qid]: 
-                hard_negatives.append(did)
-        return hard_negatives
+        
+        # First
+        returns =  dict(sorted(returned[qid].items(), key=lambda item: item[1] , reverse = True)).keys()
+        return [did for did in returns if did not in qrels[qid]]
     
     def return_attention(self, text):
         inputs = self.tokenizer.encode(text, return_tensors='pt').to(self.device)

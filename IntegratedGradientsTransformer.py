@@ -1,7 +1,7 @@
 from SentenceTransformerWrapper import SentenceTransformerWrapper 
 from torch import nn 
 import torch 
-from sentence_transformers.util import dot_score 
+from sentence_transformers.util import dot_score, cos_sim
 import sys
 sys.path.append("../master_thesis_ai")
 from gpl_improved.utils import load_sbert
@@ -53,7 +53,7 @@ class IRWrapperQuery(nn.Module):
         # Get the document features, and pass it to the model.
         doc_emb = self.forward_with_features(features_doc, self.doc_model)
         score = dot_score(doc_emb, q_emb)
-        return score
+        return score.diagonal()
     
     
 class IRWrapperDoc(nn.Module):
@@ -94,7 +94,7 @@ class IRWrapperDoc(nn.Module):
         q_emb = self.forward_with_features(features_query, self.query_model)
         doc_emb = self.forward_with_features(features_doc, self.doc_model)
         score = dot_score(q_emb, doc_emb)
-        return score
+        return score.diagonal()
     
     
 class IRWrapper(nn.Module):
