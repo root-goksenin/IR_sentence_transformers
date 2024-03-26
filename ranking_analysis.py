@@ -65,6 +65,11 @@ def find_ranks(search_set, list):
         ranks.append(list.index(did))
     return ranks
         
+        
+        
+# TODO!
+# Make it so that documents are already indexed, and multiple queries can be used
+# with indexed documents. Because, we know that documents wont change.
 
 def return_documents(model,corpus, queries, qrels, qid):
     
