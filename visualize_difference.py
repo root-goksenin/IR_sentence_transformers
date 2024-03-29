@@ -20,13 +20,14 @@ def main(data_name):
             df_before = pd.read_pickle(f"./differences/{data_name}/before_{qid}.pkl")
             df_after = pd.read_pickle(f"./differences/{data_name}/after_{qid}.pkl")
 
-            df_before_non_rel = df_before[df_before['relevant'] != True].head(n = 100)
-            df_after_non_rel = df_after[df_after['relevant'] != True].head(n = 100)
+            df_before_non_rel = df_before[df_before['relevant'] != True].head(n = 50)
+            df_after_non_rel = df_after[df_after['relevant'] != True].head(n = 50)
             accumulate_before.extend(df_before_non_rel['cross_encoder_score'])
             accumulate_after.extend(df_after_non_rel['cross_encoder_score'])
 
     sns.histplot(accumulate_before,color="skyblue", label="Before Domain Adaptation", kde=True)
     sns.histplot(accumulate_after, color="red", label="After Domain Adaptation", kde=True)
+    plt.title(f'{data_name}')
     plt.legend() 
     plt.show()
     plt.savefig(f"difference_plots/{data_name}.png")

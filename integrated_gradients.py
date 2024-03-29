@@ -120,6 +120,7 @@ def main(data_name):
 
     for qid, key in load_json(f"differences/{data_name}.json").items():
         query = [queries[qid]]
+        #TODO Find a smarter way to find 
         did = list(qrels[qid].keys())[0]
         doc = [concat_title_and_body(did, corpus)]
         facade(model_before = base,
