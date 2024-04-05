@@ -14,6 +14,7 @@ from utils import beir_path, concat_title_and_body, load_json
 from captum.attr import visualization as viz
 import os 
 import click 
+import pandas as pd
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -42,10 +43,7 @@ def generate_attributions(query, doc, model, for_query = False):
     
     # Generate doc and ref
     doc_input_ids, doc_attention_mask = doc_input['input_ids'], doc_input['attention_mask']
-    doc_ref_ids, _ = doc_ref['input_ids'], doc_ref['attention_mask']
-    
-    
-    
+    doc_ref_ids, _ = doc_ref['input_ids'], doc_ref['attention_mask']    
     if for_query:
         model_q = IRWrapperQuery(parts_query.bert_model, parts_doc.bert_model, parts_query.pooler, doc_input_ids, doc_attention_mask)
         # Get the query model embeddings
@@ -110,7 +108,27 @@ def _write_html(path, html):
     with open(path, 'w') as file:
         file.write(html)
 
-
+def find_document(data_name: str, qid : str):
+    '''
+    This functions finds a document that is relevant to the given query,
+    and ranke better after the domain adaptation.
+    '''
+    df_before = pd.read_pickle(f"./differences/{data_name}/before_{qid}.pkl")
+    df_after = pd.read_pickle(f"./differences/{data_name}/after_{qid}.pkl")
+    # We want a relevant document that is ranked better afterwards.
+    df_before_rel = df_before[df_before['relevant'] == True].head(n = 10)
+    df_after_rel = df_after[df_after['relevant'] == True].head(n = 10)
+    for index, row in df_after_rel['did'].items():
+        # If relevant item not in before, returns
+        did_to_rank_before = dict(map(lambda x: (x[1], x[0]), df_before_rel['did'].items()))
+        if row not in did_to_rank_before:
+            return row
+        else:
+            # If it is already in relevant, find the index. The index needs to be smaller
+            if index < did_to_rank_before[row]:
+                return row
+            else:
+                return None  
 @click.command()
 @click.argument("data_name")
 def main(data_name):
@@ -119,9 +137,8 @@ def main(data_name):
     corpus, queries, qrels = GenericDataLoader(beir_path.format(data_name)).load("test")
 
     for qid, key in load_json(f"differences/{data_name}.json").items():
-        query = [queries[qid]]
-        #TODO Find a smarter way to find 
-        did = list(qrels[qid].keys())[0]
+        query = [queries[qid]]        
+        did = list(qrels[qid])[0]
         doc = [concat_title_and_body(did, corpus)]
         facade(model_before = base,
             model_after = adapted,

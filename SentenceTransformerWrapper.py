@@ -48,19 +48,19 @@ class SentenceTransformerWrapper:
     def calculate_sim(self, query, doc):
         return dot_score(self._produce_embedding(query),self._produce_embedding(doc))
     
-    def return_top_k(self, qid, queries, corpus, qrels, top_k = 1000):
+    def return_top_k(self, qid, queries, corpus, qrels, top_k = 1000, score_function = "dot"):
         dummy_query = {qid : queries[qid], "AABSEHFFDWD": queries[qid]}
         returned = self.searcher.search(corpus, dummy_query,
                top_k = top_k + len(qrels[qid]), 
-               score_function = "dot")
+               score_function = score_function)
 
         return list(dict(sorted(returned[qid].items(), key=lambda item: item[1], reverse = True)).keys())
         
-    def return_hard_negatives(self, qid, query, corpus, qrels, top_k = 1000):
+    def return_hard_negatives(self, qid, query, corpus, qrels, top_k = 1000, score_function = "dot"):
         dummy_query = {qid : query, "AABSEHFFDWD": query}
         returned = self.searcher.search(corpus, dummy_query,
                top_k = top_k + len(qrels[qid]), 
-               score_function = "dot",
+               score_function = score_function,
                return_sorted = True)
         
         # First

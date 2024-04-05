@@ -11,7 +11,7 @@ import pandas as pd
 import os
 import pandas as pd 
 import torch
-from sentence_transformers import CrossEncoder
+from sentence_transformers import CrossEncoder, SentenceTransformer
 from transformers import AutoTokenizer
 from utils import concat_title_and_body
 
@@ -67,15 +67,13 @@ def find_ranks(search_set, list):
         
         
         
-# TODO!
-# Make it so that documents are already indexed, and multiple queries can be used
-# with indexed documents. Because, we know that documents wont change.
-def return_documents_pre_computed(model, corpus, queries, qrels, k = 10):
+
+def return_documents_pre_computed(model, corpus, queries, qrels, k = 100, score_function = "dot"):
     return_dict = model.searcher.search( 
                corpus,
                queries,
                top_k = k, 
-               score_function = "dot",
+               score_function = score_function,
                return_sorted = True)
     datasets = {}
     for qid in qrels:
@@ -115,21 +113,19 @@ def main(data_name):
     before_model = SentenceTransformerWrapper(before_model, device)
     after_model = load_sbert(adapted)
     after_model = SentenceTransformerWrapper(after_model, device)
+    
+    hard_negative_miner_1 = SentenceTransformerWrapper(SentenceTransformer("msmarco-distilbert-base-v3"), device)
+    hard_negative_miner_2 = SentenceTransformerWrapper(SentenceTransformer("msmarco-MiniLM-L-6-v3"), device)
             
-    # for qid in diff.keys():
-    #     before = return_documents(before_model,
-    #                     corpus, queries, qrels, qid)
-    #     before.to_pickle(f"differences/{data_name}/before_{qid}.pkl")
-    #     after = return_documents(after_model,
-    #                     corpus, queries, qrels, qid)
-    #     after.to_pickle(f"differences/{data_name}/after_{qid}.pkl")        
+    before_datasets = return_documents_pre_computed(before_model, corpus, queries, qrels, score_function = "dot")
+    after_datasets = return_documents_pre_computed(after_model, corpus, queries, qrels, score_function = "dot")
     
-    before_datasets = return_documents_pre_computed(before_model, corpus, queries, qrels)
-    after_datasets = return_documents_pre_computed(after_model, corpus, queries, qrels)
-    
+    hard_negative_miner_1_datasets = return_documents_pre_computed(hard_negative_miner_1, corpus, queries, qrels, score_function = "cos_sim")
+    hard_negative_miner_2_datasets = return_documents_pre_computed(hard_negative_miner_2, corpus, queries, qrels, score_function = "cos_sim")
     write_to_disk(before_datasets, save_path = f"differences/{data_name}/before_" )
     write_to_disk(after_datasets, save_path = f"differences/{data_name}/after_")
-    
+    write_to_disk(hard_negative_miner_1_datasets, save_path = f"differences/{data_name}/hard_negative_miner_1_" )
+    write_to_disk(hard_negative_miner_2_datasets, save_path = f"differences/{data_name}/hard_negative_miner_2_")
         
 if __name__ == "__main__":
     main()
